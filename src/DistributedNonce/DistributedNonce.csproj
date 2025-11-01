@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- Include README in the generated NuGet package and set repository/project links -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Tricksfor-Organization/DistributedNonce</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Tricksfor-Organization/DistributedNonce</PackageProjectUrl>
+    <Authors>Tricksfor-Organization</Authors>
+    <Description>Distributed Nonce provides an easy-to-use block chain Nonce handler in scalable environment.</Description>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Nethereum.BlockchainProcessing" />
+    <PackageReference Include="Nethereum.Signer" />
+    <PackageReference Include="Tricksfor.DistributedLockManager" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <!-- Ensure the README is included inside the nupkg root so NuGet will display it -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>
