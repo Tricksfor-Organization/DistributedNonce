@@ -81,7 +81,7 @@ Example configuration:
 var options = ConfigurationOptions.Parse("redis:6379");
 options.AbortOnConnectFail = false;
 options.ConnectRetry = 5;
-options.ReconnectRetryPolicy = new ExponentialRetry(5000);
+options.ReconnectRetryPolicy = new ExponentialRetry(5000, 30000);
 var mux = await ConnectionMultiplexer.ConnectAsync(options);
 services.AddSingleton<IConnectionMultiplexer>(mux);
 ```
