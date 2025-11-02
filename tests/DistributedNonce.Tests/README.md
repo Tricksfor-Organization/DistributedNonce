@@ -46,7 +46,6 @@ Mock EthGetTransactionCount by stubbing the underlying IClient.SendRequestAsync 
 using NSubstitute;
 using Nethereum.JsonRpc.Client;
 using Nethereum.Hex.HexTypes;
-using Nethereum.RPC.Eth.DTOs; // for RpcRequest if needed via other APIs
 using System.Numerics;
 
 var client = Substitute.For<IClient>();
