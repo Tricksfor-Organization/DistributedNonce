@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedNonce", "src\DistributedNonce\DistributedNonce.csproj", "{A43A3754-AAC0-4B3D-8F31-9B3322418CE6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedNonce.Tests", "tests\DistributedNonce.Tests\DistributedNonce.Tests.csproj", "{BC7B4074-6FED-483A-99A6-1D76B9E3B058}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,9 @@ Global
 		{A43A3754-AAC0-4B3D-8F31-9B3322418CE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A43A3754-AAC0-4B3D-8F31-9B3322418CE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A43A3754-AAC0-4B3D-8F31-9B3322418CE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC7B4074-6FED-483A-99A6-1D76B9E3B058}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC7B4074-6FED-483A-99A6-1D76B9E3B058}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC7B4074-6FED-483A-99A6-1D76B9E3B058}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC7B4074-6FED-483A-99A6-1D76B9E3B058}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
-	
 EndGlobal

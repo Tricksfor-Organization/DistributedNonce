@@ -11,17 +11,17 @@ namespace DistributedNonce.Services;
 public class DistributedNonceService(IDistributedLockService distributedLockService)
 {
     private readonly IDistributedLockService _distributedLockService = distributedLockService;
-    private const string LockKeyPrefix = "DistribtuedNonce_";
+    private const string LockKeyPrefix = "DistributedNonce_";
 
-    public INonceService GetInstance(string accountAddress, IClient client, bool useLatestTransactionsOnly = false)
+    public INonceService GetInstance(string address, IClient client, bool useLatestTransactionsOnly = false)
     {
-        return new CreateDistributedNonceServiceInstance(accountAddress, client, _distributedLockService, useLatestTransactionsOnly);
+        return new CreateDistributedNonceServiceInstance(address, client, _distributedLockService, useLatestTransactionsOnly);
     }
 
     private sealed class CreateDistributedNonceServiceInstance(string accountAddress, IClient client, IDistributedLockService distributedLockService, bool useLatestTransactionsOnly = false) : INonceService
     {
         private readonly IDistributedLockService _distributedLockService = distributedLockService;
-        private readonly string _accountAddress = accountAddress;
+        private readonly string _address = accountAddress;
         public IClient Client { get; set; } = client;
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
@@ -43,7 +43,7 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                     }
 
                     HexBigInteger hexBigInteger = 
-                        await ethGetTransactionCount.SendRequestAsync(_accountAddress, block).
+                        await ethGetTransactionCount.SendRequestAsync(_address, block).
                             ConfigureAwait(continueOnCapturedContext: false);
                     if (hexBigInteger.Value <= CurrentNonce)
                     {
@@ -59,9 +59,9 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 }
                 catch(Exception exception)
                 {
-                    throw new InvalidOperationException($"An error occurred during get next nonce for account: {_accountAddress}, {exception.Message}");
+                    throw new InvalidOperationException($"An error occurred during get next nonce for account: {_address}, {exception.Message}");
                 }
-            }, $"{LockKeyPrefix}{_accountAddress}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
 
             return nextNonce;
         }
@@ -77,9 +77,9 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 }
                 catch (Exception)
                 {
-                    throw new InvalidOperationException($"An error occurred during reset nonce for account: {_accountAddress}.");
+                    throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}.");
                 }
-            }, $"{LockKeyPrefix}{_accountAddress}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
         }
     }
 }
