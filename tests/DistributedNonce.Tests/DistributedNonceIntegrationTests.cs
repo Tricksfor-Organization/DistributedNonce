@@ -35,7 +35,8 @@ public class DistributedNonceIntegrationTests
             .Build();
 
         if (_redisContainer == null) Assert.Fail("Redis container not started");
-        await _redisContainer.StartAsync();
+        
+        await _redisContainer!.StartAsync();
 
         var container = _redisContainer!;
         var host = container.Hostname;
