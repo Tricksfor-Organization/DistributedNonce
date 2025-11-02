@@ -34,9 +34,9 @@ public class DistributedNonceIntegrationTests
             .WithPortBinding(RedisPort, true)
             .Build();
 
+        if (_redisContainer == null) Assert.Fail("Redis container not started");
         await _redisContainer.StartAsync();
 
-        if (_redisContainer == null) Assert.Fail("Redis container not started");
         var container = _redisContainer!;
         var host = container.Hostname;
         var port = container.GetMappedPublicPort(RedisPort);
