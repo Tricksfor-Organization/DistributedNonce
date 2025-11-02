@@ -11,7 +11,7 @@ namespace DistributedNonce.Services;
 public class DistributedNonceService(IDistributedLockService distributedLockService)
 {
     private readonly IDistributedLockService _distributedLockService = distributedLockService;
-    private const string LockKeyPrefix = "DistribtuedNonce_";
+    private const string LockKeyPrefix = "DistributedNonce_";
 
     public INonceService GetInstance(string address, IClient client, bool useLatestTransactionsOnly = false)
     {
