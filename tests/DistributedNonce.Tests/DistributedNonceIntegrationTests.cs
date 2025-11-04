@@ -16,7 +16,7 @@ namespace DistributedNonce.Tests;
 public class DistributedNonceIntegrationTests
 {
     private IServiceScope? scope;
-    private TestcontainersContainer? _redisContainer;
+    private IContainer? _redisContainer;
     private const string RedisImage = "redis:latest";
     private const int RedisPort = 6379;
     private IConnectionMultiplexer? _mux;
@@ -27,7 +27,7 @@ public class DistributedNonceIntegrationTests
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        _redisContainer = new TestcontainersBuilder<TestcontainersContainer>()
+        _redisContainer = new ContainerBuilder()
             .WithImage(RedisImage)
             .WithCleanUp(true)
             .WithName($"dtm-redis-{Guid.NewGuid():N}")

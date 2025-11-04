@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="FluentAssertions" />
-    <PackageReference Include="DotNet.Testcontainers" />
+    <PackageReference Include="Testcontainers" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
   </ItemGroup>
 
