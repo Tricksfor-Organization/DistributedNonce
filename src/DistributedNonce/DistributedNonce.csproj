@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -19,6 +19,7 @@
     <PackageReference Include="Nethereum.BlockchainProcessing" />
     <PackageReference Include="Nethereum.Signer" />
     <PackageReference Include="Tricksfor.DistributedLockManager" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
   
   <ItemGroup>
