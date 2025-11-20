@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Shouldly;
+using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
@@ -168,6 +169,6 @@ public class DistributedNonceIntegrationTests
 
         // They should form a contiguous range starting from the chain value (7)
         var expected = Enumerable.Range(7, count).Select(i => new BigInteger(i));
-        CollectionAssert.AreEquivalent(expected, values);
+        values.ShouldBe(expected, ignoreOrder: true);
     }
 }
