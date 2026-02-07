@@ -20,7 +20,7 @@ public class DistributedNonceIntegrationTests
     private IContainer? _redisContainer;
     private const string RedisImage = "redis:latest";
     private const int RedisPort = 6379;
-    private IConnectionMultiplexer? _mux;
+    private ConnectionMultiplexer? _mux;
     private ServiceProvider? _provider;
     private IClient _clientReturns5 = default!;
     private IClient _clientReturns7 = default!;
@@ -28,8 +28,7 @@ public class DistributedNonceIntegrationTests
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        _redisContainer = new ContainerBuilder()
-            .WithImage(RedisImage)
+        _redisContainer = new ContainerBuilder(RedisImage)
             .WithCleanUp(true)
             .WithName($"dtm-redis-{Guid.NewGuid():N}")
             .WithPortBinding(RedisPort, true)
@@ -76,7 +75,8 @@ public class DistributedNonceIntegrationTests
         scope?.Dispose();
         if (_provider is not null)
             await _provider.DisposeAsync();
-        _mux?.Dispose();
+        if (_mux is not null)
+            await _mux.DisposeAsync();
     }
 
     [Test, Order(1)]
