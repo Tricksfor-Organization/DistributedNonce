@@ -75,8 +75,6 @@ public class DistributedNonceIntegrationTests
         scope?.Dispose();
         if (_provider is not null)
             await _provider.DisposeAsync();
-        if (_mux is not null)
-            await _mux.DisposeAsync();
     }
 
     [Test, Order(1)]
