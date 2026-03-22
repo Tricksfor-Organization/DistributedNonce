@@ -47,6 +47,7 @@ public class DistributedNonceIntegrationTests
         _mux = await ConnectionMultiplexer.ConnectAsync(endpoint);
 
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddDistributedLockManager();
         services.AddDistributedNonce();
         services.AddSingleton<IConnectionMultiplexer>(_mux);
