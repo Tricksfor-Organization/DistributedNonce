@@ -2,6 +2,7 @@ using System.Numerics;
 using DistributedLockManager.Interfaces;
 using Nethereum.Hex.HexTypes;
 using Nethereum.JsonRpc.Client;
+using Nethereum.RPC.Eth;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.RPC.Eth.Transactions;
 using Nethereum.RPC.NonceServices;
@@ -22,7 +23,22 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
     {
         private readonly IDistributedLockService _distributedLockService = distributedLockService;
         private readonly string _address = accountAddress;
-        public IClient Client { get; set; } = client;
+        private IClient _client = client;
+        private BigInteger? _chainId = null;
+        public IClient Client
+        {
+            get => _client;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+
+                if (!ReferenceEquals(_client, value))
+                {
+                    _client = value;
+                    _chainId = null;
+                }
+            }
+        }
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
 
@@ -30,19 +46,26 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
         {
             HexBigInteger nextNonce = new(BigInteger.Zero);
 
-            EthGetTransactionCount ethGetTransactionCount = new(Client);
-
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
                 try
                 {
+                    if (!_chainId.HasValue)
+                    {
+                        var ethChainId = new EthChainId(Client);
+                        var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
+                        _chainId = chainIdHex.Value;
+                    }
+
+                    EthGetTransactionCount ethGetTransactionCount = new(Client);
+
                     BlockParameter block = BlockParameter.CreatePending();
                     if (UseLatestTransactionsOnly)
                     {
                         block = BlockParameter.CreateLatest();
                     }
 
-                    HexBigInteger hexBigInteger = 
+                    HexBigInteger hexBigInteger =
                         await ethGetTransactionCount.SendRequestAsync(_address, block).
                             ConfigureAwait(continueOnCapturedContext: false);
                     if (hexBigInteger.Value <= CurrentNonce)
