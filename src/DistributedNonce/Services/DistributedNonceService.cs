@@ -2,6 +2,7 @@ using System.Numerics;
 using DistributedLockManager.Interfaces;
 using Nethereum.Hex.HexTypes;
 using Nethereum.JsonRpc.Client;
+using Nethereum.RPC.Eth;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.RPC.Eth.Transactions;
 using Nethereum.RPC.NonceServices;
@@ -22,15 +23,32 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
     {
         private readonly IDistributedLockService _distributedLockService = distributedLockService;
         private readonly string _address = accountAddress;
+        private BigInteger? _chainId = null;
         public IClient Client { get; set; } = client;
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
+
+        private async Task<BigInteger> GetChainIdAsync()
+        {
+            if (_chainId.HasValue)
+            {
+                return _chainId.Value;
+            }
+
+            var ethChainId = new EthChainId(Client);
+            var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
+            _chainId = chainIdHex.Value;
+            return _chainId.Value;
+        }
 
         public async Task<HexBigInteger> GetNextNonceAsync()
         {
             HexBigInteger nextNonce = new(BigInteger.Zero);
 
             EthGetTransactionCount ethGetTransactionCount = new(Client);
+
+            // Get chain ID to include in the lock key for better isolation
+            var chainId = await GetChainIdAsync();
 
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
@@ -42,7 +60,7 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                         block = BlockParameter.CreateLatest();
                     }
 
-                    HexBigInteger hexBigInteger = 
+                    HexBigInteger hexBigInteger =
                         await ethGetTransactionCount.SendRequestAsync(_address, block).
                             ConfigureAwait(continueOnCapturedContext: false);
                     if (hexBigInteger.Value <= CurrentNonce)
@@ -61,13 +79,16 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 {
                     throw new InvalidOperationException($"An error occurred during get next nonce for account: {_address}, {exception.Message}");
                 }
-            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
 
             return nextNonce;
         }
 
         public async Task ResetNonceAsync()
         {
+            // Get chain ID to include in the lock key for better isolation
+            var chainId = await GetChainIdAsync();
+
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
                 try
@@ -79,7 +100,7 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 {
                     throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}.");
                 }
-            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
         }
     }
 }

@@ -59,12 +59,32 @@ public class DistributedNonceIntegrationTests
         _clientReturns5 = Substitute.For<IClient>();
         _clientReturns5
             .SendRequestAsync<HexBigInteger>(Arg.Any<RpcRequest>())
-            .Returns(Task.FromResult(new HexBigInteger(new BigInteger(5))));
+            .Returns(callInfo =>
+            {
+                var request = callInfo.Arg<RpcRequest>();
+                // Mock eth_chainId to return chain ID 1 (Ethereum mainnet)
+                if (request.Method == "eth_chainId")
+                {
+                    return Task.FromResult(new HexBigInteger(new BigInteger(1)));
+                }
+                // Mock eth_getTransactionCount to return 5
+                return Task.FromResult(new HexBigInteger(new BigInteger(5)));
+            });
 
         _clientReturns7 = Substitute.For<IClient>();
         _clientReturns7
             .SendRequestAsync<HexBigInteger>(Arg.Any<RpcRequest>())
-            .Returns(Task.FromResult(new HexBigInteger(new BigInteger(7))));
+            .Returns(callInfo =>
+            {
+                var request = callInfo.Arg<RpcRequest>();
+                // Mock eth_chainId to return chain ID 1 (Ethereum mainnet)
+                if (request.Method == "eth_chainId")
+                {
+                    return Task.FromResult(new HexBigInteger(new BigInteger(1)));
+                }
+                // Mock eth_getTransactionCount to return 7
+                return Task.FromResult(new HexBigInteger(new BigInteger(7)));
+            });
     }
 
     [OneTimeTearDown]
@@ -169,5 +189,59 @@ public class DistributedNonceIntegrationTests
         // They should form a contiguous range starting from the chain value (7)
         var expected = Enumerable.Range(7, count).Select(i => new BigInteger(i));
         values.ShouldBe(expected, ignoreOrder: true);
+    }
+
+    [Test, Order(6)]
+    public async Task GetNextNonceAsync_DifferentChainIds_UsesDifferentLockKeys()
+    {
+        if (scope is null) Assert.Fail("Service scope not initialized");
+        var sp = scope!.ServiceProvider;
+        var service = sp.GetRequiredService<DistributedNonceService>();
+
+        // Create a client that returns chain ID 1 (Ethereum mainnet)
+        var clientChain1 = Substitute.For<IClient>();
+        clientChain1
+            .SendRequestAsync<HexBigInteger>(Arg.Any<RpcRequest>())
+            .Returns(callInfo =>
+            {
+                var request = callInfo.Arg<RpcRequest>();
+                if (request.Method == "eth_chainId")
+                {
+                    return Task.FromResult(new HexBigInteger(new BigInteger(1)));
+                }
+                return Task.FromResult(new HexBigInteger(new BigInteger(10)));
+            });
+
+        // Create a client that returns chain ID 137 (Polygon mainnet)
+        var clientChain137 = Substitute.For<IClient>();
+        clientChain137
+            .SendRequestAsync<HexBigInteger>(Arg.Any<RpcRequest>())
+            .Returns(callInfo =>
+            {
+                var request = callInfo.Arg<RpcRequest>();
+                if (request.Method == "eth_chainId")
+                {
+                    return Task.FromResult(new HexBigInteger(new BigInteger(137)));
+                }
+                return Task.FromResult(new HexBigInteger(new BigInteger(20)));
+            });
+
+        var address = "0x0000000000000000000000000000000000000004";
+
+        // Get nonce services for the same address but different chains
+        var nonceServiceChain1 = service.GetInstance(address, clientChain1);
+        var nonceServiceChain137 = service.GetInstance(address, clientChain137);
+
+        // Get nonces from both chains
+        var nonceChain1 = await nonceServiceChain1.GetNextNonceAsync();
+        var nonceChain137 = await nonceServiceChain137.GetNextNonceAsync();
+
+        // They should return different nonces because they use different lock keys
+        // Chain 1 returns 10, Chain 137 returns 20
+        Assert.Multiple(() =>
+        {
+            Assert.That(nonceChain1.Value, Is.EqualTo(new BigInteger(10)), "Chain 1 should return nonce 10");
+            Assert.That(nonceChain137.Value, Is.EqualTo(new BigInteger(20)), "Chain 137 should return nonce 20");
+        });
     }
 }
