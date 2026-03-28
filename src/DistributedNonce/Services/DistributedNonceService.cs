@@ -30,10 +30,7 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
             get => _client;
             set
             {
-                if (value is null)
-                {
-                    throw new ArgumentNullException(nameof(value));
-                }
+                ArgumentNullException.ThrowIfNull(value);
 
                 if (!ReferenceEquals(_client, value))
                 {
