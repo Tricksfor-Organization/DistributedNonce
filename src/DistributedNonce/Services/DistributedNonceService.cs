@@ -19,14 +19,12 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
         return new CreateDistributedNonceServiceInstance(address, client, _distributedLockService, useLatestTransactionsOnly);
     }
 
-    private sealed class CreateDistributedNonceServiceInstance(string accountAddress, IClient client, IDistributedLockService distributedLockService, bool useLatestTransactionsOnly = false) : INonceService, IDisposable
+    private sealed class CreateDistributedNonceServiceInstance(string accountAddress, IClient client, IDistributedLockService distributedLockService, bool useLatestTransactionsOnly = false) : INonceService
     {
         private readonly IDistributedLockService _distributedLockService = distributedLockService;
         private readonly string _address = accountAddress;
-        private readonly SemaphoreSlim _chainIdSemaphore = new(1, 1);
         private IClient _client = client;
         private BigInteger? _chainId = null;
-        private int _disposed = 0;
         public IClient Client
         {
             get => _client;
@@ -39,46 +37,30 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
 
                 if (!ReferenceEquals(_client, value))
                 {
-                    _chainIdSemaphore.Wait();
-                    try
-                    {
-                        _client = value;
-                        _chainId = null;
-                    }
-                    finally
-                    {
-                        _chainIdSemaphore.Release();
-                    }
+                    _client = value;
+                    _chainId = null;
                 }
             }
         }
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
 
-        private async Task<BigInteger> GetChainIdAsync()
+        private async Task EnsureChainIdAsync()
         {
             if (_chainId.HasValue)
             {
-                return _chainId.Value;
+                return;
             }
 
-            await _chainIdSemaphore.WaitAsync().ConfigureAwait(continueOnCapturedContext: false);
-            try
+            await _distributedLockService.RunWithLockAsync(func: async () =>
             {
-                if (_chainId.HasValue)
+                if (!_chainId.HasValue)
                 {
-                    return _chainId.Value;
+                    var ethChainId = new EthChainId(Client);
+                    var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
+                    _chainId = chainIdHex.Value;
                 }
-
-                var ethChainId = new EthChainId(Client);
-                var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
-                _chainId = chainIdHex.Value;
-                return _chainId.Value;
-            }
-            finally
-            {
-                _chainIdSemaphore.Release();
-            }
+            }, $"{LockKeyPrefix}chainId_{_address}", CancellationToken.None);
         }
 
         public async Task<HexBigInteger> GetNextNonceAsync()
@@ -90,7 +72,12 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
             BigInteger chainId;
             try
             {
-                chainId = await GetChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+                await EnsureChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+                chainId = _chainId ?? throw new InvalidOperationException($"Chain ID could not be determined for account: {_address}");
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -136,7 +123,12 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
             BigInteger chainId;
             try
             {
-                chainId = await GetChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+                await EnsureChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+                chainId = _chainId ?? throw new InvalidOperationException($"Chain ID could not be determined for account: {_address}");
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -155,14 +147,6 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                     throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}.");
                 }
             }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
-        }
-
-        public void Dispose()
-        {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
-            {
-                _chainIdSemaphore.Dispose();
-            }
         }
     }
 }
