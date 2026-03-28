@@ -192,7 +192,7 @@ public class DistributedNonceIntegrationTests
     }
 
     [Test, Order(6)]
-    public async Task GetNextNonceAsync_DifferentChainIds_UsesDifferentLockKeys()
+    public async Task GetNextNonceAsync_DifferentChains_ProduceIndependentNonces()
     {
         if (scope is null) Assert.Fail("Service scope not initialized");
         var sp = scope!.ServiceProvider;
@@ -228,7 +228,7 @@ public class DistributedNonceIntegrationTests
 
         var address = "0x0000000000000000000000000000000000000004";
 
-        // Get nonce services for the same address but different chains
+        // Each chain uses a separate service instance, so nonce counters are independent
         var nonceServiceChain1 = service.GetInstance(address, clientChain1);
         var nonceServiceChain137 = service.GetInstance(address, clientChain137);
 
@@ -236,7 +236,7 @@ public class DistributedNonceIntegrationTests
         var nonceChain1 = await nonceServiceChain1.GetNextNonceAsync();
         var nonceChain137 = await nonceServiceChain137.GetNextNonceAsync();
 
-        // They should return different nonces because they use different lock keys
+        // They should return different nonces because they have independent nonce counters
         // Chain 1 returns 10, Chain 137 returns 20
         Assert.Multiple(() =>
         {

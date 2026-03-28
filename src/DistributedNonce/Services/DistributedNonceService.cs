@@ -45,49 +45,23 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
 
-        private async Task EnsureChainIdAsync()
-        {
-            if (_chainId.HasValue)
-            {
-                return;
-            }
-
-            await _distributedLockService.RunWithLockAsync(func: async () =>
-            {
-                if (!_chainId.HasValue)
-                {
-                    var ethChainId = new EthChainId(Client);
-                    var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
-                    _chainId = chainIdHex.Value;
-                }
-            }, $"{LockKeyPrefix}chainId_{_address}", CancellationToken.None);
-        }
-
         public async Task<HexBigInteger> GetNextNonceAsync()
         {
             HexBigInteger nextNonce = new(BigInteger.Zero);
-
-            EthGetTransactionCount ethGetTransactionCount = new(Client);
-
-            BigInteger chainId;
-            try
-            {
-                await EnsureChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
-                chainId = _chainId ?? throw new InvalidOperationException($"Chain ID could not be determined for account: {_address}");
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                throw new InvalidOperationException($"An error occurred during get next nonce for account: {_address}", exception);
-            }
 
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
                 try
                 {
+                    if (!_chainId.HasValue)
+                    {
+                        var ethChainId = new EthChainId(Client);
+                        var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
+                        _chainId = chainIdHex.Value;
+                    }
+
+                    EthGetTransactionCount ethGetTransactionCount = new(Client);
+
                     BlockParameter block = BlockParameter.CreatePending();
                     if (UseLatestTransactionsOnly)
                     {
@@ -113,28 +87,13 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 {
                     throw new InvalidOperationException($"An error occurred during get next nonce for account: {_address}, {exception.Message}");
                 }
-            }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
 
             return nextNonce;
         }
 
         public async Task ResetNonceAsync()
         {
-            BigInteger chainId;
-            try
-            {
-                await EnsureChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
-                chainId = _chainId ?? throw new InvalidOperationException($"Chain ID could not be determined for account: {_address}");
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}", exception);
-            }
-
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
                 try
@@ -146,7 +105,7 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 {
                     throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}.");
                 }
-            }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
+            }, $"{LockKeyPrefix}{_address}", CancellationToken.None);
         }
     }
 }
