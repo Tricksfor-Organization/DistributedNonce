@@ -47,8 +47,15 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
 
             EthGetTransactionCount ethGetTransactionCount = new(Client);
 
-            // Get chain ID to include in the lock key for better isolation
-            var chainId = await GetChainIdAsync();
+            BigInteger chainId;
+            try
+            {
+                chainId = await GetChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException($"An error occurred during get next nonce for account: {_address}", exception);
+            }
 
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
@@ -86,8 +93,15 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
 
         public async Task ResetNonceAsync()
         {
-            // Get chain ID to include in the lock key for better isolation
-            var chainId = await GetChainIdAsync();
+            BigInteger chainId;
+            try
+            {
+                chainId = await GetChainIdAsync().ConfigureAwait(continueOnCapturedContext: false);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}", exception);
+            }
 
             await _distributedLockService.RunWithLockAsync(func: async () =>
             {
