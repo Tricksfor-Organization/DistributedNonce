@@ -19,12 +19,39 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
         return new CreateDistributedNonceServiceInstance(address, client, _distributedLockService, useLatestTransactionsOnly);
     }
 
-    private sealed class CreateDistributedNonceServiceInstance(string accountAddress, IClient client, IDistributedLockService distributedLockService, bool useLatestTransactionsOnly = false) : INonceService
+    private sealed class CreateDistributedNonceServiceInstance(string accountAddress, IClient client, IDistributedLockService distributedLockService, bool useLatestTransactionsOnly = false) : INonceService, IDisposable
     {
         private readonly IDistributedLockService _distributedLockService = distributedLockService;
         private readonly string _address = accountAddress;
+        private readonly SemaphoreSlim _chainIdSemaphore = new(1, 1);
+        private IClient _client = client;
         private BigInteger? _chainId = null;
-        public IClient Client { get; set; } = client;
+        private int _disposed = 0;
+        public IClient Client
+        {
+            get => _client;
+            set
+            {
+                if (value is null)
+                {
+                    throw new ArgumentNullException(nameof(value));
+                }
+
+                if (!ReferenceEquals(_client, value))
+                {
+                    _chainIdSemaphore.Wait();
+                    try
+                    {
+                        _client = value;
+                        _chainId = null;
+                    }
+                    finally
+                    {
+                        _chainIdSemaphore.Release();
+                    }
+                }
+            }
+        }
         public BigInteger CurrentNonce { get; set; } = -1;
         public bool UseLatestTransactionsOnly { get; set; } = useLatestTransactionsOnly;
 
@@ -35,10 +62,23 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                 return _chainId.Value;
             }
 
-            var ethChainId = new EthChainId(Client);
-            var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
-            _chainId = chainIdHex.Value;
-            return _chainId.Value;
+            await _chainIdSemaphore.WaitAsync().ConfigureAwait(continueOnCapturedContext: false);
+            try
+            {
+                if (_chainId.HasValue)
+                {
+                    return _chainId.Value;
+                }
+
+                var ethChainId = new EthChainId(Client);
+                var chainIdHex = await ethChainId.SendRequestAsync().ConfigureAwait(continueOnCapturedContext: false);
+                _chainId = chainIdHex.Value;
+                return _chainId.Value;
+            }
+            finally
+            {
+                _chainIdSemaphore.Release();
+            }
         }
 
         public async Task<HexBigInteger> GetNextNonceAsync()
@@ -115,6 +155,14 @@ public class DistributedNonceService(IDistributedLockService distributedLockServ
                     throw new InvalidOperationException($"An error occurred during reset nonce for account: {_address}.");
                 }
             }, $"{LockKeyPrefix}{chainId}_{_address}", CancellationToken.None);
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+            {
+                _chainIdSemaphore.Dispose();
+            }
         }
     }
 }
